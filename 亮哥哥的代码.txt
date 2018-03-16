@@ -1,0 +1,337 @@
+----------------------------------------投资人首页---------------------------------------
+<template>
+  <div>
+  <div class="invest-list info-page">
+    <y-navigator title="投资人" :beforeBack="leftBack">
+      <span slot="navigator-right">
+        <y-nav-toggle id="open"></y-nav-toggle>
+        <y-link-button icon="search" to="/search"></y-link-button>
+      </span>
+    </y-navigator>
+    <!--投资人列表区域-->
+         <y-list>
+           <y-item v-for="item of someData" :key="item.id">
+           	<router-link :to="item.link" tag="div">
+             <y-card :data="item">
+             	 <p v-html="item.mergeLabel"></p>
+               <P>投资领域：<span v-html="item.focusArea"></span></p>
+             </y-card>
+             </router-link>
+           </y-item>
+         </y-list>
+
+    <!--底部右边悬浮-->
+  </div>
+    <div class="add-investors" @click="parSet"></div>
+    <y-menu fixed :menu="menu" handle="#open"></y-menu>
+  </div>
+</template>
+
+<script>
+  export default{
+    name:'example',
+    data(){
+      return{
+        someData:[],
+        menu: [
+          'homepage'
+        ]
+      }
+    },
+
+    mounted:function () {
+      this.$nextTick(function () {
+        this.list();
+      });
+    },
+    methods:{
+      list: function () {
+        let _this=this;
+        this.$http.post('/services/partner/selectPartnerAll',{role:"1",pageSize:10,pageNo:1,isAuthentication:"1"}).then(function(response){
+        var data=response.data.data.result;
+        console.log('data',data)
+          for(let item of data ) {          	
+              item.name = item.realName;
+              item.avatar = item.picture;
+              item.badge = true;
+              //判断若为用户自己的项目，则跳转至 "我的投资人信息"页面，否则全部跳转至"投资人详情"页面
+              if(item.userId==this.$env.custId){
+              	item.link = '/invest/my-investors';
+              }else{
+              	item.link = '/invest/investors/'+item.userId;
+              }
+              item.mergeLabel=item.mergeLabel.replace(new RegExp(/\//g),'<span class="lable-seper">/</span>');
+              item.focusArea=item.focusArea.replace(new RegExp(/\ /g),'<span class="lable-seper">/</span>');
+              
+          }
+          console.log('data',data)
+          this.someData = data;
+        })
+      },
+      //判断是否是投资人
+      parSet:function () {
+        this.$http.post('/services/partner/personInfo', {userId:this.$env.custId, role:"1"}).then(response => {
+          var resData = response.body;
+        console.log("resData",resData);
+        if(resData.msg == 'success' && resData.data) {
+          this.$router.push({path:'/invest/my-investors'});
+        }else {
+          this.$router.push({path:'/invest/in-set/'+this.$env.custId});
+        }
+      });
+      },
+        leftBack() {
+				this.$router.replace({
+					path: '/'
+				});
+				return false;
+			}
+    }
+
+  }
+</script>
+
+----------------------------------------项目首页---------------------------------------
+<template>
+  <div>
+    <!--头部导航-->
+    <y-navigator title="项目" :beforeBack="leftBack">
+      <span slot="navigator-right">
+        <y-nav-toggle id="open"></y-nav-toggle>
+        <y-link-button icon="search" to="/search"></y-link-button>
+      </span>
+    </y-navigator>
+    <!--tab切换-->
+    <y-tab-bar v-model="activeBarId" >
+      <y-tab-bar-item :tabId='activeBarId' v-for="(item,index) of menuData" key="index" :id="index">{{item.categoryName}}</y-tab-bar-item>
+    </y-tab-bar>
+    <!--列表区域-->
+    <y-tab-container>
+      <y-tab-container-item>
+        <y-list class="project">
+          <y-item v-for="(item,index) of this.data" :key="item.id">
+            <router-link :to="item.link" tag="div">
+              <y-card :data="item" :assist="item.projectIntro">
+                <p v-html='item.label'></p>
+                <p>找合伙人：<span v-text="item.projectPartnerDemandIds"></span></p>
+              </y-card>
+            </router-link>
+          </y-item>
+        </y-list>
+      </y-tab-container-item>
+    </y-tab-container>
+
+    <!--底部悬浮按钮-->
+    <div class="add-idea" @click="putt"></div>
+    <y-menu fixed :menu="menu" handle="#open"></y-menu>
+  </div>
+</template>
+
+<script>
+  export default{
+    data(){
+      return {
+        activeBarId: "",
+        data: [],
+        menuData: [
+          {categoryName: '全部', type: '1'}
+        ],
+        menu: [
+          'homepage'
+        ]
+      }
+    },
+    methods: {
+      requestData(params){
+        this.$http.post('/services/item/getItemListByState', params).then(req => {
+
+        this.data = req.data.data.result.reverse();
+        for (let item of this.data) {
+          item.name = item.projectName;
+            item.avatar = item.projectImgUrl;
+            //item.badge = true,
+            if(item.createUserId==this.$env.custId){
+            	 item.link = '/project/my-info';
+            }else{
+            	 item.link = '/project/info/' + item.createUserId;
+            }
+            item.label = '标签：' + item.label.replace(new RegExp(/\//g), '<span class="lable-seper">/</span>')
+        }
+
+      }).
+        catch(err => console.log(err)
+      )
+        ;
+      },
+      putt: function () {
+        this.$http.post('/services/item/getItemInfoByUserId', {
+          createUserId: this.$env.custId
+        }).then((response) => {
+          var relData = response.body;
+
+        if (relData.data !== null) {
+          this.$router.push({path: '/project/my-info'});
+        } else {
+          this.$router.push({path: '/project/setinfo/'+this.$env.custId});
+        }
+      })
+      },
+      leftBack() {
+				this.$router.replace({
+					path: '/'
+				});
+				return false;
+			}
+
+    },
+    created: function () {
+      let params = {
+        pageNo: 1,
+        pageSize: 100,
+        columnCode: '100-1006'
+      };
+      this.$http.get('/services/category/listByCommon/100-1006').then(req => {
+        this.menuData.push(...req.data.data);
+      this.requestData(params)
+      this.activeBarId = 0;
+    }).
+      catch(err => console.log(err)
+      );
+    },
+    watch: {
+      activeBarId(newValue, oldValue){
+
+        let menu = this.menuData[parseInt(newValue)];
+        let params = {
+          pageNo: 1,
+          pageSize: 100,
+          columnCode: '100-1006',
+          projectIndustryFieldId: menu.categoryName === "全部" ? null : menu.categoryName
+        };
+        this.requestData(params)
+      }
+    }
+
+
+  }
+</script>
+
+----------------------------------------合伙人首页---------------------------------------
+<template>
+  <div>
+    <!--头部导航-->
+    <y-navigator title="合伙人">
+      <span slot="navigator-right">
+        <y-nav-toggle id="open"></y-nav-toggle>
+        <y-link-button icon="search" to="/search"></y-link-button>
+      </span>
+    </y-navigator>
+    <!--tab切换-->
+
+    <y-tab-bar v-model="activeBarId"  class="tab-bar-more">
+      <y-tab-bar-item :tabId='activeBarId' v-for="(item,index) of menuData" key="index"  :id="index">{{item.designation}}</y-tab-bar-item>
+    </y-tab-bar>
+    <!--列表区域-->
+    <y-tab-container>
+
+      <y-tab-container-item>
+        <y-list class="partner">
+          <y-item v-for="(item,index) of data" :key="item.id">
+          	<router-link :to="item.link" tag="div">
+            <y-card :data="item" :assist="item.personalProfile">
+              <p v-html="item.mergeLabel"></p>
+            </y-card>
+           </router-link>
+          </y-item>
+        </y-list>
+      </y-tab-container-item>
+    </y-tab-container>
+
+    <!--底部悬浮按钮-->
+    <div class="add-partner" @click="parSet"></div>
+      <y-menu fixed :menu="menu" handle="#open"></y-menu>
+  </div>
+</template>
+
+<script>
+  export default{
+    data(){
+      return{
+        activeBarId:"0",
+        data:[],
+        menuData:[
+          {designation:'全部',tagName:'1'}
+        ],
+        menu: [
+          'homepage'
+        ]
+      }
+    },
+    methods:{
+      requestData(params){
+        console.log(this.data);
+        this.$http.post('/services/partner/selectPartnerAll',params).then(req=>{
+        this.data=req.data.data.result.reverse();
+        console.log('data:',this.data);
+        for(let item of this.data ) {
+        	console.log(item)
+              item.name = item.realName;
+              item.avatar = item.picture;
+              item.badge = true;
+              //判断若为用户自己的项目，则跳转至 "我的合伙人信息"页面，否则全部跳转至"合伙人详情"页面
+              if(item.userId==this.$env.custId){
+              	item.link = '/partnership/my-particulars';
+              }else{
+              	item.link = '/partnership/particulars/'+item.userId;
+              }
+              item.mergeLabel='标签 : '+ item.mergeLabel.replace(new RegExp(/\//g),'<span class="lable-seper">/</span>')
+          }
+
+      }).catch(err=>console.log(err));
+      },
+      parSet:function () {
+        this.$http.post('/services/partner/personInfo', {userId:this.$env.custId, role:"2"}).then(response => {
+          var resData = response.body;
+          console.log(resData);
+          if(resData.msg == 'success' && resData.data) {
+            this.$router.push({path:'/partnership/my-particulars'});
+          }else {
+            this.$router.push({path:'/partnership/par-set/'+this.$env.custId});
+          }
+        });
+      }
+    },
+    created:function(){
+      let params={
+      	isAuthentication:"1",
+        pageNo:1,
+        pageSize:10,
+        role:"2"
+      };
+      this.$http.post('/services/fieldClassify/fieldDesignationByparams',{attachCode:3}).then(req=>{
+        this.menuData.push(...req.data.data);
+        console.log('dddd:',...req.data.data);
+      this.requestData(params)
+      this.activeBarId = 0;
+    }).catch(err=>console.log(err));
+    },
+    watch:{
+      activeBarId(newValue,oldValue){
+        let menu= this.menuData[parseInt(newValue)];
+        let params={
+          pageNo:1,
+          pageSize:10,
+          role:2,
+          attachCode:'3',
+          isAuthentication:"1",
+          tagName:menu.designation==="全部" ? null : menu.designation
+        };
+        this.requestData(params)
+      }
+    }
+
+  }
+</script>
+
+
+
